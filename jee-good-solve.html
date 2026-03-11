@@ -3,61 +3,144 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>JEE Solve App</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;900&display=swap" rel="stylesheet"/>
+  
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#080810">
+  <title>JEE Solve Hub</title>
+
+  <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/96/math.png">
+  <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/math.png">
+
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@500;900&display=swap" rel="stylesheet"/>
+  
   <style>
-    :root { --bg: #080810; --accent: #ff4500; --text: #e8e8f0; }
+    :root {
+      --bg: #080810; --surface: #10101c; --border: #ffffff0f; 
+      --accent: #ff4500; --text: #e8e8f0; --muted: #55556a;
+    }
+    
+    /* App-specific behavior: Prevents browser-like selection and scrolling artifacts */
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; margin: 0; padding: 0; }
+    
     body { 
-      background: var(--bg); color: var(--text); 
-      font-family: 'Outfit', sans-serif; display: flex; 
-      flex-direction: column; align-items: center; justify-content: center;
-      height: 100vh; margin: 0; overflow: hidden;
+      background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif;
+      overscroll-behavior-y: contain; /* Prevents "pull to refresh" inside the app */
+      user-select: none;
     }
-    .card {
-      background: #10101c; border: 1px solid #ffffff0f;
-      padding: 2.5rem; border-radius: 24px; text-align: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4); width: 90%; max-width: 400px;
+
+    .app-shell { max-width: 900px; margin: 0 auto; padding: env(safe-area-inset-top) 1.2rem 2rem; }
+    
+    header { 
+      position: sticky; top: 0; background: rgba(8, 8, 16, 0.9); backdrop-filter: blur(10px);
+      z-index: 100; padding: 1.2rem 0; display: flex; justify-content: space-between; 
+      align-items: center; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem;
     }
-    h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+
+    h1 { font-size: 1.5rem; font-weight: 900; letter-spacing: -0.5px; }
     h1 span { color: var(--accent); }
-    p { color: #55556a; margin-bottom: 2rem; font-size: 0.9rem; }
-    .btn {
-      background: var(--accent); color: white; border: none;
-      padding: 1.2rem 2rem; border-radius: 12px; font-weight: 900;
-      font-size: 1.1rem; cursor: pointer; width: 100%;
-      transition: transform 0.1s;
+
+    .controls {
+      background: var(--surface); padding: 1.2rem; border-radius: 20px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
     }
-    .btn:active { transform: scale(0.95); }
+
+    input[type="date"] {
+      background: var(--bg); border: 1px solid #ffffff18; border-radius: 12px;
+      color: var(--text); padding: 10px; font-family: 'JetBrains Mono'; font-size: 0.8rem;
+    }
+
+    .btn {
+      background: var(--accent); color: white; border: none; padding: 1rem;
+      border-radius: 12px; font-weight: 900; cursor: pointer; text-align: center;
+      box-shadow: 0 4px 15px rgba(255, 69, 0, 0.2); transition: transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+
+    .post { background: var(--surface); border-radius: 18px; margin-bottom: 1.2rem; padding: 1.2rem; border: 1px solid var(--border); }
+    .post-title { 
+      color: var(--text); text-decoration: none; font-weight: 700; font-size: 1rem;
+      display: block; margin-bottom: 10px; line-height: 1.4;
+      user-select: text; /* Let you copy the text of the problem */
+    }
+    .post-images img { width: 100%; border-radius: 12px; margin-top: 12px; background: #000; border: 1px solid var(--border); }
+    
+    .status-bar { font-family: 'JetBrains Mono'; font-size: 0.7rem; color: var(--muted); text-align: center; margin-top: 10px; }
   </style>
 </head>
 <body>
 
-<div class="card">
-  <h1>JEE <span>Solves</span></h1>
-  <p>Automated Search for r/JEEAdv26dailyupdates</p>
-  
-  <button class="btn" onclick="launchReddit()">🚀 OPEN SEARCH IN APP</button>
+<div class="app-shell">
+  <header>
+    <h1>JEE<span>Solver</span></h1>
+    <button class="btn" style="background:#33a852; padding: 0.6rem 1rem; font-size: 0.8rem;" onclick="openRedditSearch()">📱 SEARCH IN APP</button>
+  </header>
+
+  <div class="controls">
+    <input type="date" id="start">
+    <input type="date" id="end">
+    <button class="btn" style="grid-column: span 2" onclick="loadContent()">⚡ LOAD RECENT SOLVES</button>
+  </div>
+
+  <div id="feed"></div>
+  <div class="status-bar" id="status">Ready</div>
 </div>
 
 <script>
-  function launchReddit() {
-    const sub = "JEEAdv26dailyupdates";
-    const query = encodeURIComponent('flair:"GOOD SOLVE"');
+  // Initial Date Setup
+  const d = new Date();
+  document.getElementById('end').value = d.toISOString().split('T')[0];
+  d.setDate(d.getDate() - 5);
+  document.getElementById('start').value = d.toISOString().split('T')[0];
+
+  function openRedditSearch() {
+    // Deep Link to trigger the Reddit App
+    window.location.href = `reddit://www.reddit.com/r/JEEAdv26dailyupdates/search?q=flair%3A"GOOD%20SOLVE"&restrict_sr=1&sort=new`;
+  }
+
+  async function loadContent() {
+    const feed = document.getElementById('feed');
+    const status = document.getElementById('status');
+    feed.innerHTML = '<div style="text-align:center; padding: 3rem; color:var(--accent); font-weight:bold;">BYPASSING FILTERS...</div>';
     
-    // Attempt to open the official Reddit app directly
-    const deepLink = `reddit://www.reddit.com/r/${sub}/search?q=${query}&restrict_sr=1&sort=new`;
-    const fallback = `https://www.reddit.com/r/${sub}/search?q=${query}&restrict_sr=1&sort=new`;
+    const PROXY = "https://corsproxy.io/?";
+    const API = encodeURIComponent("https://www.reddit.com/r/JEEAdv26dailyupdates/new.json?limit=60");
 
-    window.location.href = deepLink;
+    try {
+      const res = await fetch(PROXY + API);
+      const json = await res.json();
+      let html = '';
+      let count = 0;
+      
+      json.data.children.forEach(p => {
+        const data = p.data;
+        if (data.link_flair_text === "GOOD SOLVE") {
+          let img = "";
+          if (data.url && data.url.match(/\.(jpg|png|jpeg|webp)$/)) {
+            img = `<img src="${data.url}" loading="lazy">`;
+          } else if (data.media_metadata) {
+             const firstKey = Object.keys(data.media_metadata)[0];
+             const src = data.media_metadata[firstKey].s.u.replace(/&amp;/g, '&');
+             img = `<img src="${src}" loading="lazy">`;
+          }
 
-    // Fallback if app isn't installed or fails to trigger
-    setTimeout(() => {
-      if (!document.hidden) {
-        window.open(fallback, "_blank");
-      }
-    }, 1500);
+          html += `
+            <div class="post">
+              <a href="reddit://www.reddit.com${data.permalink}" class="post-title">${data.title}</a>
+              <div style="font-size:0.7rem; color:var(--muted); font-family:'JetBrains Mono'">⬆️ ${data.score} • u/${data.author}</div>
+              <div class="post-images">${img}</div>
+            </div>`;
+          count++;
+        }
+      });
+      feed.innerHTML = html || '<p style="text-align:center; padding: 2rem;">No new solves in range.</p>';
+      status.textContent = `Last update: ${new Date().toLocaleTimeString()} (${count} found)`;
+    } catch (e) { 
+      feed.innerHTML = '<p style="text-align:center; color:red; padding: 2rem;">CONNECTION ERROR<br>Try tapping "Search in App" instead.</p>'; 
+    }
   }
 </script>
-
 </body>
 </html>
